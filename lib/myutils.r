@@ -1,0 +1,112 @@
+library(repr)
+library(forecast)
+
+
+my.figsize <- function(w, h) {
+    if(missing(w)) {
+        x <- getOption("repr.plot.width")
+        y <- getOption("repr.plot.height")
+        sprintf("width: %s, height %s", x, y)
+    } else {
+        options(repr.plot.width=w, repr.plot.height=h)
+    }
+}
+
+
+# fit: (result) value of Arima in forecast pkg
+# future: number of times to forecast
+# past: number of past data to plot with forecast
+# test: actual data to compare with forecasts
+my.plot_forecast <- function(fit, future=NULL, past=NULL, test=NULL, xreg=NULL) {
+    
+    series <- eval(parse(text=fit$series))
+    l <- length(series)
+    
+    if (is.null(future)) {
+        future <- as.integer(0.1 * l)
+    }
+    
+    if (is.null(past)) {
+        past <- l
+    }
+    
+    y <- forecast(fit, h=future, xreg=xreg)
+    gg <- autoplot(y, include=past)
+    
+    if (!is.null(test)) {
+        if (!is.ts(test)) {
+            test <- ts(as.numeric(test), start=start(y$mean)[1], end=end(y$mean)[1])
+        }
+        gg <- gg +
+               autolayer(test, series="Actuals") +
+               autolayer(y$mean, series="Forecasts")
+    }
+    return(gg)
+}
+
+
+# updated from following source
+# https://stats.stackexchange.com/questions/431545/why-isnt-the-tscv-function-allowing-for-step-size-other-than-1
+my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL, 
+          initial = 0, step = 1, ...) 
+{
+    y <- as.ts(y)
+    n <- length(y)
+    step <- round(step)
+    step_ind <- seq(step, n - 1L, by = step) ### Added line
+
+    if (initial >= n) 
+        stop("initial period too long")
+
+    if (!is.null(xreg)) {
+        xreg <- ts(as.matrix(xreg))
+        if (NROW(xreg) != length(y)) 
+            stop("xreg must be of the same size as y")
+        tsp(xreg) <- tsp(y)
+    }
+    
+    if (is.null(window)) {
+        indx <- seq(1 + initial, n - 1L)
+    } else {
+        indx <- seq(window + initial, n - 1L, by = 1L)
+    }
+    indx <- intersect(indx, step_ind) ### Added line
+    
+    e.cols <- c('forecast_start', 'forecast_end', 'rmse', 'mape')
+    e <- ts(matrix(NA_real_, nrow = floor(n/step), ncol = length(e.cols)))
+    colnames(e) <- e.cols
+    
+    cnt <- 0
+    for (i in indx) {
+		# get new start of subset of y & xreg
+    	if (is.null(window)) {
+		    start <- 1L
+		} else {
+		    if (i - window >= 0L) {
+		        start <- i - window + 1L
+		    } else {
+		        stop("small window")
+		    }
+		}
+		
+		y_subset <- subset(y, start=start, end = i)
+		if (is.null(xreg)) {
+		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
+		                                          h = h, ...)), silent = TRUE)
+		} else {
+		    xreg_subset <- as.matrix(subset(xreg, start=start, end=i))
+		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
+		                                          h = h, xreg = xreg_subset)), silent = TRUE)
+		}
+        if (!is.element("try-error", class(fc))) {
+            rmse <- sqrt(sum((fc$mean - y[i + (1:h)])^2))
+            mape <- sum(abs(1 - fc$mean / y[i + (1:h)])) / h
+            e[i/step, ] <- c(i+1, i+h, rmse, mape)
+        }
+        
+        cnt <- cnt + 1
+        print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+    }
+    #return(na.omit(e)) # times of NA kept in e as attr(na.action)
+    return(e)
+}
