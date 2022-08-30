@@ -110,3 +110,51 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
     #return(na.omit(e)) # times of NA kept in e as attr(na.action)
     return(e)
 }
+
+
+# x: xts obj
+my.minmaxscale <- function(x) {
+
+	# save attrs if they exist
+	if (is.null(attr(x, 'scaled:scale'))) {
+		sc <- NULL
+	} else {
+		sc <- attr(x, 'scaled:center')
+		ss <- attr(x, 'scaled:scale')
+	}
+
+	# check if single time series
+	if (is.null(dim(x))) {
+		TO.TS <- TRUE
+	} else if (dim(x)[2] == 1) {
+		TO.TS <- TRUE
+	} else {
+		TO.TS <- FALSE
+	}
+
+	# save col names
+	cols <- colnames(x)
+
+	# transform or inv.
+	if (is.null(sc)) {
+		sc <- apply(x, 2, mean)
+		ss <- (apply(x, 2, max) - apply(x, 2, min)) / 2
+		x <- apply(x, 1, function(r) {(r - sc) / ss})
+	} else {
+		# arrts reset
+		x <- apply(x, 1, function(r) {r*attr(x,'scaled:scale') + attr(x, 'scaled:center')})
+		sc <- NULL
+	}
+
+	if (TO.TS) {
+		x <- as.xts(x)
+	} else {
+		x <- as.xts(t(x))
+	}
+	colnames(x) <- cols
+	if (!is.null(sc)) {
+		attr(x, 'scaled:center') <- sc
+		attr(x, 'scaled:scale') <- ss
+	}
+	return(x)
+}
