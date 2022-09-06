@@ -158,3 +158,24 @@ my.minmaxscale <- function(x) {
 	}
 	return(x)
 }
+
+
+# get price from log. return
+# logret: logret of period
+# period: period for logret
+# prices.init: init. prices for period before first logret
+my.recprice <- function(logret, period, prices.init) {
+    N <- nrow(logret)
+    price <- NULL
+    for (i in 1:period) {
+        logret.sum <- logret[seq(i, N, by=period)]
+        price.rec <- rep(prices.init[i], nrow(logret.sum)) * exp(cumsum(logret.sum))
+        if (is.null(price)) {
+            price <- price.rec
+        } else {
+            price <- rbind(price, price.rec)
+        }
+    }
+    return(price)
+}
+
