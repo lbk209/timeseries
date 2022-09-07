@@ -164,11 +164,19 @@ my.minmaxscale <- function(x) {
 # logret: logret of period
 # period: period for logret
 # prices.init: init. prices for period before first logret
-my.recprice <- function(logret, period, prices.init) {
+my.recprice <- function(logret, period, prices.init, message=TRUE) {
     N <- nrow(logret)
     price <- NULL
     for (i in 1:period) {
-        logret.sum <- logret[seq(i, N, by=period)]
+        logret.sum <- tryCatch(logret[seq(i, N, by=period)],
+         					   error=function(e) {
+                                         if (message) {print(e)}
+                                         # use NULL instead of NA to avoid error (the condition has length > 1)
+                                         # if logret.sum is series
+                                         return(NULL)
+                                     }
+                              )
+        if (is.null(logret.sum)) next 
         price.rec <- rep(prices.init[i], nrow(logret.sum)) * exp(cumsum(logret.sum))
         if (is.null(price)) {
             price <- price.rec
