@@ -134,6 +134,11 @@ my.minmaxscale <- function(x) {
 
 	# save col names
 	cols <- colnames(x)
+	
+	# set time zone same as that of x
+	# as the apply function will lose the time zone
+	tz <- tzone(x)
+    Sys.setenv(TZ = tz)
 
 	# transform or inv.
 	if (is.null(sc)) {
@@ -146,10 +151,11 @@ my.minmaxscale <- function(x) {
 		sc <- NULL
 	}
 
+    # convert to xts with original time zone
 	if (TO.TS) {
-		x <- as.xts(x)
+		x <- as.xts(x, tz=tz) 
 	} else {
-		x <- as.xts(t(x))
+		x <- as.xts(t(x), tz=tz)
 	}
 	colnames(x) <- cols
 	if (!is.null(sc)) {
