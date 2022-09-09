@@ -1,5 +1,6 @@
 library(repr)
 library(forecast)
+library(ggplot2)
 
 
 my.figsize <- function(w, h) {
@@ -48,7 +49,7 @@ my.plot_forecast <- function(fit, future=NULL, past=NULL, test=NULL, xreg=NULL) 
 # updated from following source
 # https://stats.stackexchange.com/questions/431545/why-isnt-the-tscv-function-allowing-for-step-size-other-than-1
 my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL, 
-          initial = 0, step = 1, silent=TRUE...) 
+          initial = 0, step = 1, silent=TRUE, count.freq=0.1, ...) 
 {
     y <- as.ts(y)
     n <- length(y)
@@ -77,6 +78,7 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
     colnames(e) <- e.cols
     
     cnt <- 0
+    print.when <- seq(0, length(indx), by=round(count.freq*length(indx)))
     for (i in indx) {
 		# get new start of subset of y & xreg
     	if (is.null(window)) {
@@ -106,7 +108,9 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
         }
         
         cnt <- cnt + 1
-        print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+        if (cnt %in% print.when) {
+            print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+        }
     }
     #return(na.omit(e)) # times of NA kept in e as attr(na.action)
     return(e)
@@ -192,5 +196,42 @@ my.recprice <- function(logret, period, prices.init, message=TRUE) {
         }
     }
     return(price)
+}
+
+
+my.get_result <- function(x, group) {
+    x <- x[,c('rmse','mape')]
+    x <- as.data.frame(x)
+    x <- na.omit(x)
+    x$cs <- group
+    return(x)
+}
+
+
+my.plot_errors <- function(results, group='Models', metrics=c('rmse','mape')) {
+    if ('rmse' %in% metrics) {
+        p1 <- (ggplot(results, aes(y=rmse, group=cs, fill = factor(cs))) 
+          + geom_boxplot()
+          + theme(legend.position="bottom")
+          + labs(fill=group)
+        )
+    } else {
+        p1 <- NULL
+    }
+    
+    if ('mape' %in% metrics) {
+        p2 <- (ggplot(results, aes(y=mape, group=cs, fill = factor(cs))) 
+          + geom_boxplot()
+          + theme(legend.position="bottom")
+          + labs(fill=group)
+        )
+    } else {
+        p2 <- NULL
+    }
+    if (is.null(p1)) {
+        return(p2 + p1)
+    } else {
+        return(p1 + p2)
+    }
 }
 

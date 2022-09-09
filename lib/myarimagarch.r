@@ -382,38 +382,4 @@ ag2.plot.garchforecast.2 = function(x, price, lookahead,
 }
 
 
-ag.get_result <- function(x, group) {
-    x <- x[,c('rmse','mape')]
-    x <- as.data.frame(x)
-    x <- na.omit(x)
-    x$cs <- group
-    return(x)
-}
 
-
-ag.plot_errors <- function(results, group='Models', metrics=c('rmse','mape')) {
-    if ('rmse' %in% metrics) {
-        p1 <- (ggplot(results, aes(y=rmse, group=cs, fill = factor(cs))) 
-          + geom_boxplot()
-          + theme(legend.position="bottom")
-          + labs(fill=group)
-        )
-    } else {
-        p1 <- NULL
-    }
-    
-    if ('mape' %in% metrics) {
-        p2 <- (ggplot(results, aes(y=mape, group=cs, fill = factor(cs))) 
-          + geom_boxplot()
-          + theme(legend.position="bottom")
-          + labs(fill=group)
-        )
-    } else {
-        p2 <- NULL
-    }
-    if (is.null(p1)) {
-        return(p2 + p1)
-    } else {
-        return(p1 + p2)
-    }
-}
