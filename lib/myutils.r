@@ -48,7 +48,7 @@ my.plot_forecast <- function(fit, future=NULL, past=NULL, test=NULL, xreg=NULL) 
 # updated from following source
 # https://stats.stackexchange.com/questions/431545/why-isnt-the-tscv-function-allowing-for-step-size-other-than-1
 my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL, 
-          initial = 0, step = 1, ...) 
+          initial = 0, step = 1, silent=TRUE...) 
 {
     y <- as.ts(y)
     n <- length(y)
@@ -93,11 +93,11 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 		if (is.null(xreg)) {
 		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
 		    #                                      h = h, ...)), silent = TRUE)
-		                                          h = h)), silent = TRUE)
+		                                          h = h)), silent = silent)
 		} else {
 		    xreg_subset <- as.matrix(subset(xreg, start=start, end=i))
 		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
-		                                          h = h, xreg = xreg_subset)), silent = TRUE)
+		                                          h = h, xreg = xreg_subset)), silent = silent)
 		}
         if (!is.element("try-error", class(fc))) {
             rmse <- sqrt(sum((fc$mean - y[i + (1:h)])^2))
