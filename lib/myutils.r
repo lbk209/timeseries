@@ -94,12 +94,13 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 		y_subset <- subset(y, start=start, end = i)
 		if (is.null(xreg)) {
 		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
-		    #                                      h = h, ...)), silent = TRUE)
-		                                          h = h)), silent = silent)
+		                                          h = h, ...)), silent = TRUE)
+		    #                                      h = h)), silent = silent)
 		} else {
 		    xreg_subset <- as.matrix(subset(xreg, start=start, end=i))
 		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
-		                                          h = h, xreg = xreg_subset)), silent = silent)
+		                                          h = h, xreg = xreg_subset, ...)), silent = silent)
+		    #                                      h = h, xreg = xreg_subset)), silent = silent)
 		}
         if (!is.element("try-error", class(fc))) {
             rmse <- sqrt(sum((fc$mean - y[i + (1:h)])^2))
@@ -117,22 +118,30 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 }
 
 
-# x: xts obj
-my.minmaxscale <- function(x) {
+# x: xts/ts obj
+my.minmaxscale <- function(x, center=NULL, scale=NULL) {
 
-    if ('xts' %in% class(x)) {
-        tz <- tzone(x)
-    } else {
-        tz <- 'UTC'
-        x <- as.xts(x, tz=tz)
-    }
-
-	# save attrs if they exist
-	if (is.null(attr(x, 'scaled:scale'))) {
-		sc <- NULL
-	} else {
+	x <- na.omit(x)
+	
+	if (!is.null(center)) { # inv.transf if the args given
+		sc <- center
+		ss <- scale	
+	} else if (!is.null(attr(x, 'scaled:scale'))) { # inv.transf if the attr given
 		sc <- attr(x, 'scaled:center')
-		ss <- attr(x, 'scaled:scale')
+		ss <- attr(x, 'scaled:scale')	
+	} else { # scale
+	    sc <- NULL
+	}
+
+	if ('xts' %in% class(x)) {
+		# set time zone same as that of x
+		# as the apply function will lose the time zone
+		tz <- tzone(x)
+		Sys.setenv(TZ = tz)
+		as.time <- function(x) {as.xts(x, tz=tz)}
+	} else {
+		x <- as.xts(x)
+		as.time <- as.ts
 	}
 
 	# check if single time series
@@ -146,27 +155,24 @@ my.minmaxscale <- function(x) {
 
 	# save col names
 	cols <- colnames(x)
-	
-	# set time zone same as that of x
-	# as the apply function will lose the time zone
-    Sys.setenv(TZ = tz)
+
 
 	# transform or inv.
-	if (is.null(sc)) {
+	if (is.null(sc)) { # transform
 		sc <- apply(x, 2, mean)
 		ss <- (apply(x, 2, max) - apply(x, 2, min)) / 2
 		x <- apply(x, 1, function(r) {(r - sc) / ss})
-	} else {
+	} else { # inv.transform
 		# arrts reset
-		x <- apply(x, 1, function(r) {r*attr(x,'scaled:scale') + attr(x, 'scaled:center')})
+		x <- apply(x, 1, function(r) {r * ss + sc})
 		sc <- NULL
 	}
 
-    # convert to xts with original time zone
+	# convert to xts with original time zone
 	if (TO.TS) {
-		x <- as.xts(x, tz=tz) 
+		x <- as.time(x) 
 	} else {
-		x <- as.xts(t(x), tz=tz)
+		x <- as.time(t(x))
 	}
 	colnames(x) <- cols
 	if (!is.null(sc)) {
@@ -214,11 +220,12 @@ my.get_result <- function(x, group) {
 }
 
 
-my.plot_errors <- function(results, group='Models', metrics=c('rmse','mape')) {
+my.plot_errors <- function(results, group='Models', metrics=c('rmse','mape'), loc='bottom') {
     if ('rmse' %in% metrics) {
         p1 <- (ggplot(results, aes(y=rmse, group=cs, fill = factor(cs))) 
           + geom_boxplot()
-          + theme(legend.position="bottom")
+          + theme(legend.position=loc)
+          #+ guides(fill=guide_legend(byrow=TRUE))
           + labs(fill=group)
         )
     } else {
@@ -228,7 +235,8 @@ my.plot_errors <- function(results, group='Models', metrics=c('rmse','mape')) {
     if ('mape' %in% metrics) {
         p2 <- (ggplot(results, aes(y=mape, group=cs, fill = factor(cs))) 
           + geom_boxplot()
-          + theme(legend.position="bottom")
+          + theme(legend.position=loc)
+          #+ guides(fill=guide_legend(byrow=TRUE))
           + labs(fill=group)
         )
     } else {
