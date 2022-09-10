@@ -120,6 +120,13 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 # x: xts obj
 my.minmaxscale <- function(x) {
 
+    if ('xts' %in% class(x)) {
+        tz <- tzone(x)
+    } else {
+        tz <- 'UTC'
+        x <- as.xts(x, tz=tz)
+    }
+
 	# save attrs if they exist
 	if (is.null(attr(x, 'scaled:scale'))) {
 		sc <- NULL
@@ -142,7 +149,6 @@ my.minmaxscale <- function(x) {
 	
 	# set time zone same as that of x
 	# as the apply function will lose the time zone
-	tz <- tzone(x)
     Sys.setenv(TZ = tz)
 
 	# transform or inv.
