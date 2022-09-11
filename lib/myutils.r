@@ -103,8 +103,8 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 		    #                                      h = h, xreg = xreg_subset)), silent = silent)
 		}
         if (!is.element("try-error", class(fc))) {
-            rmse <- sqrt(sum((fc$mean - y[i + (1:h)])^2))
-            mape <- sum(abs(1 - fc$mean / y[i + (1:h)])) / h
+            rmse <- sqrt(mean((fc$mean - y[i + (1:h)])^2))
+            mape <- mean(abs(1 - fc$mean / y[i + (1:h)]))
             e[i/step, ] <- c(i+1, i+h, rmse, mape)
         }
         
