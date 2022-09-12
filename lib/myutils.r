@@ -94,7 +94,7 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 		y_subset <- subset(y, start=start, end = i)
 		if (is.null(xreg)) {
 		    fc <- try(suppressWarnings(forecastfunction(y_subset, 
-		                                          h = h, ...)), silent = TRUE)
+		                                          h = h, ...)), silent = silent)
 		    #                                      h = h)), silent = silent)
 		} else {
 		    xreg_subset <- as.matrix(subset(xreg, start=start, end=i))
