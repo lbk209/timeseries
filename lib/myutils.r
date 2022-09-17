@@ -211,41 +211,31 @@ my.recprice <- function(logret, period, prices.init, message=TRUE) {
 }
 
 
-my.get_result <- function(x, group) {
-    x <- x[,c('rmse','mape')]
+my.get_result <- function(x, group, errors=c('rmse','mape'), group.col='cs') {
+    x <- x[,errors]
     x <- as.data.frame(x)
     x <- na.omit(x)
-    x$cs <- group
+    x[group.col] <- group
     return(x)
 }
 
 
-my.plot_errors <- function(results, group='Models', metrics=c('rmse','mape'), loc='bottom') {
-    if ('rmse' %in% metrics) {
-        p1 <- (ggplot(results, aes(y=rmse, group=cs, fill = factor(cs))) 
+my.plot_errors <- function(results, metrics=c('rmse','mape'), group.col='cs', loc='bottom') {
+    p <- NULL
+    for (m in metrics) {
+        p.m <- (ggplot(results, aes_string(y=m, group=group.col, fill=factor(group.col))) 
           + geom_boxplot()
           + theme(legend.position=loc)
           #+ guides(fill=guide_legend(byrow=TRUE))
-          + labs(fill=group)
+          + labs(fill=group.col)
+          #+ annotate("text", x = 4, y = 25, label = "Some text")
         )
-    } else {
-        p1 <- NULL
+        if (is.null(p)) {
+            p <- p.m
+        } else {
+            p <- p + p.m
+        }
     }
-    
-    if ('mape' %in% metrics) {
-        p2 <- (ggplot(results, aes(y=mape, group=cs, fill = factor(cs))) 
-          + geom_boxplot()
-          + theme(legend.position=loc)
-          #+ guides(fill=guide_legend(byrow=TRUE))
-          + labs(fill=group)
-        )
-    } else {
-        p2 <- NULL
-    }
-    if (is.null(p1)) {
-        return(p2 + p1)
-    } else {
-        return(p1 + p2)
-    }
+    return(p)
 }
 
