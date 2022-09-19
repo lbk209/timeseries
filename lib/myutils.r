@@ -220,15 +220,26 @@ my.get_result <- function(x, group, errors=c('rmse','mape'), group.col='cs') {
 }
 
 
-my.plot_errors <- function(results, metrics=c('rmse','mape'), group.col='cs', loc='bottom') {
+my.plot_errors <- function(results, metrics=c('rmse','mape'), group.col='cs', loc='right',
+                           ss.pos.n=0.97, ss.pos.m=1.03) 
+{
+	func <- function(x, a, l){
+	  return(data.frame(y = median(x)*a, label = l)) 
+	}
+	func.n <- function(x) {func(x, ss.pos.n, paste('n', length(x), sep='='))}
+	func.m <- function(x) {func(x, ss.pos.m, signif(mean(x), 3))}
+
     p <- NULL
     for (m in metrics) {
-        p.m <- (ggplot(results, aes_string(y=m, group=group.col, fill=factor(group.col))) 
+        #p.m <- (ggplot(results, aes_string(y=m, group=group.col, fill=factor(group.col))) 
+         p.m <- (ggplot(results, aes_string(group.col, m, fill=group.col)) 
           + geom_boxplot()
           + theme(legend.position=loc)
           #+ guides(fill=guide_legend(byrow=TRUE))
-          + labs(fill=group.col)
+          #+ labs(fill=factor(group.col))
           #+ annotate("text", x = 4, y = 25, label = "Some text")
+          + stat_summary(fun.data=func.m, fun=median, geom="text")
+          + stat_summary(fun.data=func.n, fun=median, geom="text")
         )
         if (is.null(p)) {
             p <- p.m
