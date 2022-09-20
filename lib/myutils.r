@@ -301,7 +301,11 @@ my.plot_errors <- function(results, metrics=c('rmse','mape'), group.col='cs', lo
         y <- (quantile(x, probs=q) + median(x))*.5
         return(data.frame(y = y, label = l)) 
     }
-    func.m <- function(x) {func(x, 0.75, signif(mean(x), 3))}
+    if (ylog) {
+        func.m <- function(x) {func(x, 0.75, signif(mean(10^x), 3))}
+    } else {
+        func.m <- function(x) {func(x, 0.75, signif(mean(x), 3))}
+    }
     func.n <- function(x) {func(x, 0.25, paste('n', length(x), sep='='))}
 
     p <- NULL
