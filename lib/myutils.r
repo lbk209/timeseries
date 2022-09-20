@@ -118,6 +118,80 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
 }
 
 
+# type 2 of time series cross validation 
+# forecastfunction.2 returns avg and std of errors
+my.tsCV.2 <- function (y, forecastfunction.2, h = 1, window = NULL, xreg = NULL, 
+          initial = 0, step = 1, silent=TRUE, count.freq=0.1, ...) 
+{
+    y <- ts(y, start=1, frequency=1) # converted to n * 1 ts
+    n <- length(y)
+    step <- round(step)
+    step_ind <- seq(step, n - 1L, by = step) ### Added line
+
+    if (initial >= n) 
+        stop("initial period too long")
+
+    if (!is.null(xreg)) {
+        xreg <- ts(xreg, start=1, frequency=1) # work even if n * 1?
+        if (NROW(xreg) != length(y)) 
+            stop("xreg must be of the same size as y")
+        tsp(xreg) <- tsp(y)
+    }
+    
+    if (is.null(window)) {
+        indx <- seq(1 + initial, n - 1L)
+    } else {
+        indx <- seq(window + initial, n - 1L, by = 1L)
+    }
+    indx <- intersect(indx, step_ind) ### Added line
+    
+    e.cols <- c('forecast_start', 'forecast_end', 
+                'rmse.mean', 'rmse.sigma', 'mape.mean', 'mape.sigma')
+    e <- ts(matrix(NA_real_, nrow = floor(n/step), ncol = length(e.cols)))
+    colnames(e) <- e.cols
+    
+    cnt <- 0
+    print.when <- seq(0, length(indx), by=round(count.freq*length(indx)))
+    for (i in indx) {
+        # get new start of subset of y & xreg
+        if (is.null(window)) {
+            start <- 1L
+        } else {
+            if (i - window >= 0L) {
+                start <- i - window + 1L
+            } else {
+                stop("small window")
+            }
+        }
+        if (i+h > length(y)) {
+            break
+        } else {
+            y_subset <- window(y, start, i+h)
+        }
+        if (is.null(xreg)) {
+            fc <- try(suppressWarnings(forecastfunction.2(y_subset, 
+                                                  h = h, ...)), silent = silent)
+            #                                      h = h)), silent = silent) # uncomment when debugging this function
+        } else {
+            xreg_subset <- window(xreg, start, i+h)
+            fc <- try(suppressWarnings(forecastfunction.2(y_subset, 
+                                                  h = h, xreg = xreg_subset, ...)), silent = silent)
+            #                                      h = h, xreg = xreg_subset)), silent = silent) # uncomment when debugging this function
+        }
+        if (!is.element("try-error", class(fc))) {
+            e[i/step, ] <- c(i+1, i+h, fc$rmse.mean, fc$rmse.sigma, fc$mape.mean, fc$mape.sigma)
+        }
+        
+        cnt <- cnt + 1
+        if (cnt %in% print.when) {
+            print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+        }
+    }
+    return(e)
+}
+
+
+
 # x: xts/ts obj
 my.minmaxscale <- function(x, center=NULL, scale=NULL) {
 
@@ -221,31 +295,32 @@ my.get_result <- function(x, group, errors=c('rmse','mape'), group.col='cs') {
 
 
 my.plot_errors <- function(results, metrics=c('rmse','mape'), group.col='cs', loc='right',
-                           ss.pos.n=0.97, ss.pos.m=1.03) 
+                           ylog=FALSE) 
 {
-	func <- function(x, a, l){
-	  return(data.frame(y = median(x)*a, label = l)) 
-	}
-	func.n <- function(x) {func(x, ss.pos.n, paste('n', length(x), sep='='))}
-	func.m <- function(x) {func(x, ss.pos.m, signif(mean(x), 3))}
+    func <- function(x, q, l){
+        y <- (quantile(x, probs=q) + median(x))*.5
+        return(data.frame(y = y, label = l)) 
+    }
+    func.m <- function(x) {func(x, 0.75, signif(mean(x), 3))}
+    func.n <- function(x) {func(x, 0.25, paste('n', length(x), sep='='))}
 
     p <- NULL
     for (m in metrics) {
-        #p.m <- (ggplot(results, aes_string(y=m, group=group.col, fill=factor(group.col))) 
-         p.m <- (ggplot(results, aes_string(group.col, m, fill=group.col)) 
-          + geom_boxplot()
-          + theme(legend.position=loc)
-          #+ guides(fill=guide_legend(byrow=TRUE))
-          #+ labs(fill=factor(group.col))
-          #+ annotate("text", x = 4, y = 25, label = "Some text")
-          + stat_summary(fun.data=func.m, fun=median, geom="text")
-          + stat_summary(fun.data=func.n, fun=median, geom="text")
+        p.m <- (ggplot(results, aes_string(group.col, m, fill=group.col)) 
+                + geom_boxplot()
+                + theme(legend.position=loc)
+                + stat_summary(fun.data=func.m, fun=median, geom="text")
+                + stat_summary(fun.data=func.n, fun=median, geom="text")
         )
         if (is.null(p)) {
             p <- p.m
         } else {
             p <- p + p.m
         }
+    }
+    if (ylog) {
+            p <- (p + scale_y_continuous(trans='log10') 
+                    + labs(y = paste(p$labels$y, " (log scale)")))
     }
     return(p)
 }
