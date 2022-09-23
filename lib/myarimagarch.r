@@ -1,3 +1,4 @@
+# ARIMA+GARCH Strategy - fit & predict
 ag.forecast <- function(ret, foreLength, windowLength, lookahead) {
 
     # Create vectors to store the predictions
@@ -71,6 +72,8 @@ ag.forecast <- function(ret, foreLength, windowLength, lookahead) {
 }
 
 
+# ARIMA+GARCH Strategy - plot the result of ag.forecast
+# pred: return value of ag.forecast
 ag.plotforecast <- function(pred, trueCurve, lookahead, 
                             label='S&P 500', n_sigma=2) 
 {
@@ -106,7 +109,8 @@ ag.plotforecast <- function(pred, trueCurve, lookahead,
     return(gg)
 }
 
-
+# ARIMA+GARCH Strategy - trading strategy
+# pred: return value of ag.forecast
 ag.backtest <- function(pred, ret, lookahead) {
     if (dim(pred)[2]>1) stop("dim of pred is invalid.")
     
@@ -133,7 +137,7 @@ ag.backtest <- function(pred, ret, lookahead) {
     return(xyp)
 }
 
-
+# see ag.backtest
 ag.plot <- function(data, 
                     labels=c("ARIMA+GARCH", "Buy & Hold"),
                     colors=c("darkred", "darkblue")) {
@@ -151,6 +155,8 @@ ag.plot <- function(data,
 }
 
 
+
+# ARIMA+GARCH Forecasts - fit & predict
 ag2.forecast <- function(ret, foreLength, out.sample=0)
 {
     # get train data for ARIMA model by dropping out-of-sample
@@ -193,37 +199,8 @@ ag2.forecast <- function(ret, foreLength, out.sample=0)
     return(fore)
 }
 
-
-ag2.plot.old <- function(fore, var.mode='unconditional', plot.mode='return',
-                     price=NULL, lookahead=NULL,
-                     figsize=c(10,6),
-                     plotFUN = paste("ag2.plot.garchforecast", 1:2, sep = ".")
-                    ) 
-{
-    my.figsize(figsize[1],figsize[2])
-    vmode <- ifelse(var.mode=='unconditional', 1, 2)
-    if (plot.mode=='return') {
-        tryCatch(plot(fore, which=vmode),
-                 error=function(e) {
-                     n <- unlist(gregexpr("n.roll less than 5", e$message))
-                     if (length(n) > 0) {
-                         print('ERROR: Run ag2.forecast with out.sample > 0')
-                     }
-                 },
-                 warning=function(w) {w})
-    } else {
-        if ((is.null(price) | (is.null(lookahead)))) {
-            print('price data & lookahead required.')
-            return(NA)
-        } else {
-            func <- match.fun(plotFUN[vmode])
-            func(fore, price, lookahead)
-        }
-    }
-    
-}
-
-
+# ARIMA+GARCH Forecasts - plot
+# fore: return value of ag2.forecast
 ag2.plot <- function(fore, var.mode='unconditional', plot.mode='return',
                      price=NULL, lookahead=NULL,
                      figsize=c(10,6),
@@ -251,8 +228,8 @@ ag2.plot <- function(fore, var.mode='unconditional', plot.mode='return',
 }
 
 
-# unconditional
-ag2.plot.garchforecast.1 = function(x, price, lookahead,
+# ARIMA+GARCH Forecasts - plotFUN of ag2.plot in the case of unconditional variance
+ag2.plot.garchforecast.1 <- function(x, price, lookahead,
                                     size.title=1.0, color.x.sig='grey', 
                                     ylab='Index',
                                     #history.length=42,
@@ -316,8 +293,8 @@ ag2.plot.garchforecast.1 = function(x, price, lookahead,
 }
 
 
-# conditional
-ag2.plot.garchforecast.2 = function(x, price, lookahead,
+# ARIMA+GARCH Forecasts - plotFUN of ag2.plot in the case of conditional variance
+ag2.plot.garchforecast.2 <- function(x, price, lookahead,
                                     size.title=1.0, color.x.sig='grey', 
                                     ylab='Index',
                                     #history.length=42,
