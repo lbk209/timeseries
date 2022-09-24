@@ -157,16 +157,59 @@ ag.plot <- function(data,
 
 
 # ARIMA+GARCH Forecasts - fit & predict
-ag2.forecast <- function(ret, foreLength, out.sample=0, order=NULL)
+ag2.forecast <- function(x, h, 
+                         mxreg=NULL, mxreg.msize=NULL,
+                         vxreg=NULL, vxreg.msize=NULL,
+                         out.sample=0, order=NULL)
 {
+    
+    getxregh <- function(xreg, xreg.msize) {    
+        if (!is.null(xreg)) {
+            if (is.null(xreg.msize)) {
+                xreg.m <- xreg # calc mean for future with all the xreg
+            } else {
+                # calc mean for future with xreg of length xreg.mszie
+                xreg.m <- tail(xreg, n=xreg.msize)
+            }
+
+            if (is.null(dim(xreg))) {
+                xreg.h <- mean(xreg.m)
+            } else {
+                xreg.h <- colMeans(xreg.m)  
+            }
+
+            xreg.h <- data.frame(xreg.h)
+            colnames(xreg.h) <- colnames(NA)
+            #colnames(xreg.h) <- colnames(xreg) # error with multiple xreg
+            xreg.h <- t(xreg.h)
+            xreg.h <- as.ts(xreg.h[rep(seq_len(nrow(xreg.h)), h), ])
+
+            ## added for single day forecast
+            xreg.coln <- colnames(xreg)
+            xreg.h <- data.frame(xreg.h) # convert to frame for the case of single xreg
+            if ((dim(xreg.h)[2]==1) & (dim(xreg.h)[1]==length(xreg.coln))) {
+                xreg.h <- t(xreg.h) # the case of h==1
+            } else {
+                xreg.h <- as.ts(xreg.h) # convert to ts as xreg is ts
+            }
+        } else {
+            mxreg.h <- NULL
+        }
+        return(xreg.h)
+    }
+    mxreg.h <- getxregh(mxreg, mxreg.msize)
+    vxreg.h <- getxregh(vxreg, vxreg.msize)
+    
+    
     if (is.null(order)) {
         # get train data for ARIMA model by dropping out-of-sample
-        train <- ret[1:(nrow(as.xts(ret))-foreLength)]
+        train <- x[1:(nrow(as.xts(x))-h)]
         # Fit the ARIMA model
         fit <- tryCatch(auto.arima(train, seasonal=FALSE, 
                                    ic='aicc', 
                                    #ic='aic', 
                                    d=0, 
+                                   xreg=mxreg, 
                                    trace=FALSE),
                         error=function(err) {FALSE},
                         warning=function(err) {FALSE} )
@@ -180,11 +223,13 @@ ag2.forecast <- function(ret, foreLength, out.sample=0, order=NULL)
 
     # Specify and fit the GARCH model
     spec <- ugarchspec(
-        variance.model=list(garchOrder=c(1,1)),
-        mean.model=list(armaOrder=c(order[1], order[3]), include.mean=T),
+        variance.model=list(garchOrder=c(1,1),
+                            external.regressors=vxreg),
+        mean.model=list(armaOrder=c(order[1], order[3]), include.mean=T,
+                        external.regressors=mxreg),
         distribution.model="sged"
     )
-    fit <- tryCatch(ugarchfit(spec, ret, solver='hybrid', out.sample=out.sample), 
+    fit <- tryCatch(ugarchfit(spec, x, solver='hybrid', out.sample=out.sample), 
                     error=function(e) {e}, 
                     warning=function(w) {w})
 
@@ -195,7 +240,11 @@ ag2.forecast <- function(ret, foreLength, out.sample=0, order=NULL)
         print('GARCH model does not converge')
         fore <- NA
     } else {
-        fore <- ugarchforecast(fit, n.ahead=foreLength, n.roll=out.sample)
+        fore <- ugarchforecast(fit, n.ahead=h, 
+                               external.forecasts=list(
+                                   mregfor=mxreg.h, 
+                                   vregfor=vxreg.h),
+                               n.roll=out.sample)
         
         setClass(
           "myuGARCHforecast",
@@ -207,6 +256,7 @@ ag2.forecast <- function(ret, foreLength, out.sample=0, order=NULL)
     }
     return(fore)
 }
+
 
 # ARIMA+GARCH Forecasts - plot
 # fore: return value of ag2.forecast
