@@ -193,7 +193,7 @@ ag2.forecast <- function(x, h,
                 xreg.h <- as.ts(xreg.h) # convert to ts as xreg is ts
             }
         } else {
-            mxreg.h <- NULL
+            xreg.h <- NULL
         }
         return(xreg.h)
     }
