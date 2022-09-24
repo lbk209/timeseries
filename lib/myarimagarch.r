@@ -157,29 +157,31 @@ ag.plot <- function(data,
 
 
 # ARIMA+GARCH Forecasts - fit & predict
-ag2.forecast <- function(ret, foreLength, out.sample=0)
+ag2.forecast <- function(ret, foreLength, out.sample=0, order=NULL)
 {
-    # get train data for ARIMA model by dropping out-of-sample
-    train <- ret[1:(nrow(as.xts(ret))-foreLength)]
-    # Fit the ARIMA model
-    fit <- tryCatch(auto.arima(train, seasonal=FALSE, 
-                               ic='aicc', 
-                               #ic='aic', 
-                               d=0, 
-                               trace=FALSE),
-                    error=function(err) {FALSE},
-                    warning=function(err) {FALSE} )
+    if (is.null(order)) {
+        # get train data for ARIMA model by dropping out-of-sample
+        train <- ret[1:(nrow(as.xts(ret))-foreLength)]
+        # Fit the ARIMA model
+        fit <- tryCatch(auto.arima(train, seasonal=FALSE, 
+                                   ic='aicc', 
+                                   #ic='aic', 
+                                   d=0, 
+                                   trace=FALSE),
+                        error=function(err) {FALSE},
+                        warning=function(err) {FALSE} )
 
-    if( !is.logical(fit) ) {
-        final.order <- as.numeric(arimaorder(fit))
-    } else {
-        final.order <- c(0,0,0)
+        if( !is.logical(fit) ) {
+            order <- as.numeric(arimaorder(fit))
+        } else {
+            order <- c(0,0,0)
+        }
     }
 
     # Specify and fit the GARCH model
     spec <- ugarchspec(
         variance.model=list(garchOrder=c(1,1)),
-        mean.model=list(armaOrder=c(final.order[1], final.order[3]), include.mean=T),
+        mean.model=list(armaOrder=c(order[1], order[3]), include.mean=T),
         distribution.model="sged"
     )
     fit <- tryCatch(ugarchfit(spec, ret, solver='hybrid', out.sample=out.sample), 
@@ -194,8 +196,15 @@ ag2.forecast <- function(ret, foreLength, out.sample=0)
         fore <- NA
     } else {
         fore <- ugarchforecast(fit, n.ahead=foreLength, n.roll=out.sample)
+        
+        setClass(
+          "myuGARCHforecast",
+          contains="uGARCHforecast",
+          slots=c(users="list")
+        ) -> myuGARCHforecast
+        fore <- as(fore, "myuGARCHforecast")
+        fore@users <- list(arima.order=order)
     }
-    #plot(fore, which=2)
     return(fore)
 }
 
