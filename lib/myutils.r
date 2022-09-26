@@ -77,8 +77,12 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
     e <- ts(matrix(NA_real_, nrow = floor(n/step), ncol = length(e.cols)))
     colnames(e) <- e.cols
     
+    indx.len <- length(indx)
+    by <- round(count.freq*indx.len)
+    by <- max(1, by)
+    print.when <- seq(0, indx.len, by=by)
+    
     cnt <- 0
-    print.when <- seq(0, length(indx), by=round(count.freq*length(indx)))
     for (i in indx) {
 		# get new start of subset of y & xreg
     	if (is.null(window)) {
@@ -110,7 +114,9 @@ my.tsCV <- function (y, forecastfunction, h = 1, window = NULL, xreg = NULL,
         
         cnt <- cnt + 1
         if (cnt %in% print.when) {
-            print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+            #print(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+            message(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
+            #cat(sprintf("%0.0f %% done.", 100*cnt/length(indx)))
         }
     }
     #return(na.omit(e)) # times of NA kept in e as attr(na.action)
@@ -150,8 +156,12 @@ my.tsCV.2 <- function (y, forecastfunction.2, h = 1, window = NULL, xreg = NULL,
     e <- ts(matrix(NA_real_, nrow = floor(n/step), ncol = length(e.cols)))
     colnames(e) <- e.cols
     
+    indx.len <- length(indx)
+    by <- round(count.freq*indx.len)
+    by <- max(1, by)
+    print.when <- seq(0, indx.len, by=by)
+    
     cnt <- 0
-    print.when <- seq(0, length(indx), by=round(count.freq*length(indx)))
     for (i in indx) {
         # get new start of subset of y & xreg
         if (is.null(window)) {
