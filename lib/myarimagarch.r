@@ -260,10 +260,12 @@ ag2.forecast <- function(x, h,
 
 # ARIMA+GARCH Forecasts - plot
 # fore: return value of ag2.forecast
+# test: test data to compare with forecast
 ag2.plot <- function(fore, var.mode='unconditional', plot.mode='return',
                      price=NULL, lookahead=NULL,
                      figsize=c(10,6),
-                     plotFUN = paste("ag2.plot.garchforecast", 1:2, sep = ".")
+                     plotFUN = paste("ag2.plot.garchforecast", 1:2, sep = "."),
+                     test = NULL, test.color='steelblue'
                     ) 
 {
     my.figsize(figsize[1],figsize[2])
@@ -276,6 +278,19 @@ ag2.plot <- function(fore, var.mode='unconditional', plot.mode='return',
     
     if (plot.mode=='return') {
         plot(fore, which=vmode)
+        if (!is.null(test)) {
+            # reset dates of test same as forecast just for comparison
+            # (forecast dates are given as starting date and length)
+            x <- fore@forecast$sigmaFor
+            x <- as.Date(as.character(attr(x, 'dimnames')[2]))
+            h <- fore@forecast$n.ahead
+            x <- x + 0:h
+
+            y <- tail(fore@model$modeldata$data, 1)
+            y <- append(y, as.numeric(test))
+
+            lines(x, y, col=test.color)
+        }
     } else {
         if ((is.null(price) | (is.null(lookahead)))) {
             return('ERROR: price data & lookahead required.')
