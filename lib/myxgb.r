@@ -120,6 +120,7 @@ xgb.tsCV <- function (label, features, max_depth = 6, eta = .25,
     hyper_grid <- expand.grid(max_depth = max_depth, eta = eta)
     if (nrow(hyper_grid)>1) {
         hyper_grid.flag <- TRUE
+        h.gsearch <- max(h, step)
     } else {
         hyper_grid.flag <- FALSE
     }
@@ -159,7 +160,7 @@ xgb.tsCV <- function (label, features, max_depth = 6, eta = .25,
         # tune hyperparams
         if (hyper_grid.flag) {
             res <- xgb.gridsearch(train.label, train.features, 
-                                  max(h, step), 
+                                  h.gsearch, 
                                   hyper_grid)
             max_depth.best <- res$max_depth
             eta.best <- res$eta
