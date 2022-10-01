@@ -85,7 +85,8 @@ xgb.gridsearch <- function(label, features, test.h, hyper_grid, verbose=1) {
     return(r)
 }
 
-
+# run gridsearch if comb of max_depth & eta g.t. 1
+# train length in each fold for gridseatch is max value of h & step
 xgb.tsCV <- function (label, features, max_depth = 6, eta = .25,
                       h = 1, window = NULL, initial = 0, step = 1, 
                       count.freq=0.1, ...) 
@@ -157,7 +158,9 @@ xgb.tsCV <- function (label, features, max_depth = 6, eta = .25,
         
         # tune hyperparams
         if (hyper_grid.flag) {
-            res <- xgb.gridsearch(train.label, train.features, h, hyper_grid)
+            res <- xgb.gridsearch(train.label, train.features, 
+                                  max(h, step), 
+                                  hyper_grid)
             max_depth.best <- res$max_depth
             eta.best <- res$eta
         } else {
